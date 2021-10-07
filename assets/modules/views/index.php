@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset='utf-8';" />
-<title>MyWebSQL</title>
+<title>Go WebDbManager</title>
 	<link rel="stylesheet" type="text/css" href="/mywebsql/cache?css=theme,default" />
 	<link rel="SHORTCUT ICON" href="favicon.ico" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
@@ -30,7 +30,7 @@
 		<div id="main_header">
 			<a target="_blank" href="/mywebsql/index/index"><img src="/mywebsql/img/logo.png" class="logo" alt="MyWebSQL" width="45" height="38" border="0" /></a>
 			<div class="title">
-				<div class="main">MyWebSQL</div>
+				<div class="main">WebDbManager</div>
 				<div class="version"><%= T("version") + APP_VERSION %></div>
 			</div>
 			<div class="info">

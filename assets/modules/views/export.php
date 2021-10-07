@@ -35,7 +35,7 @@
 			</table>
 		</fieldset>
 
-		<fieldset>
+		<fieldset style='display: none'>
 			<legend><%= T("Options") %></legend>
 			<table border="0" cellspacing="10" cellpadding="5" width="100%">
 				<tr><td valign="top">
@@ -84,12 +84,9 @@
 <script type="text/javascript" language="javascript">
 window.title = "<%= T("Export Database") %>";
 var exportType = 'export';
-<?php
-	foreach( $data as $name => $list ) {
-		echo "var {$name} = " . json_encode( $list ) .";\n";
-	}
-?>
-
+<%= for (name, jsn) in list { %>
+var <%= name %> = <%= jsn %>;
+<% } %>
 $(function() {
 	// we do not want to show the popup overlay when form is submitted
 	$('#popup_overlay').remove();
@@ -132,16 +129,11 @@ $(function() {
 			$("#dropcmd").removeAttr("disabled");
 		}
 	});
-<?php
-	if ( count($data) > 0 ) {
-?>
-		$('#db_objects').html('');
-<?php
-		foreach( $data as $name => $list ) {
-			echo "uiShowObjectList({$name}, '{$name}', '" . __( ucfirst($name) ) . "');\n";
-		}
-	}
-?>
+
+	$('#db_objects').html('');
+	<%= for (name, jsn) in list { %>
+		uiShowObjectList(<%= name %>, '<%= name %>', '<%= name %>');
+	<% } %>
 	$('.selectall').click(function(e) {
 		chk = $(this).attr('checked');
 		chk ? $(this).parent().next().find('input').attr('checked', "checked") : $(this).parent().next().find('input').removeAttr('checked');
@@ -159,6 +151,6 @@ $(function() {
 
 });
 </script>
-<?php
+<!-- <?php
 	echo getGeneratedJS();
-?>
+?> -->

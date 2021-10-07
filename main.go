@@ -2,21 +2,22 @@ package main
 
 import (
 	"fmt"
-	"github.com/allegro/bigcache/v3"
-	"github.com/xiusin/logger"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/allegro/bigcache/v3"
+	"github.com/xiusin/logger"
+
 	"github.com/gorilla/securecookie"
 	"github.com/xiusin/pine"
+	pine_bigcache "github.com/xiusin/pine/cache/providers/pine-bigcache"
 	"github.com/xiusin/pine/di"
 	"github.com/xiusin/pine/sessions"
 	cacheProvider "github.com/xiusin/pine/sessions/providers/cache"
 	"github.com/xiusin/web-db-manager/actions"
 	"github.com/xiusin/web-db-manager/common"
-	appCache "github.com/xiusin/web-db-manager/common/cache"
 )
 
 func main() {
@@ -32,17 +33,16 @@ func main() {
 		}
 	})
 
-
 	di.Set(di.ServicePineLogger, func(builder di.AbstractBuilder) (i interface{}, err error) {
 		loggers := logger.New()
 		loggers.SetOutput(os.Stdout)
 		logger.SetDefault(loggers)
 		loggers.SetReportCaller(true, 3)
-		loggers.SetLogLevel(logger.DebugLevel)
+		loggers.SetLogLevel(common.Appcfg.LogLevel)
 		return loggers, nil
 	}, false)
 
-	cacheHandler := appCache.New(bigcache.DefaultConfig(24 * time.Hour))
+	cacheHandler := pine_bigcache.New(bigcache.DefaultConfig(24 * time.Hour))
 
 	di.Set(common.ServiceICache, func(builder di.AbstractBuilder) (i interface{}, err error) {
 		return cacheHandler, nil

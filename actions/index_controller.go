@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"fmt"
 	"html/template"
 
 	"github.com/jmoiron/sqlx"
@@ -50,7 +49,7 @@ func (c *IndexController) GetIndex() {
 		//}
 	}
 
-	if db := c.GetSQLX(); db == nil {
+	if db, authServe := c.GetSQLX(); db == nil {
 		c.clearAuthSession()
 
 		if c.Ctx().GetString("q") == "wrkfrm" {
@@ -84,7 +83,7 @@ func (c *IndexController) GetIndex() {
 			if err := db.Ping(); err != nil {
 				c.Ctx().WriteString(err.Error())
 			} else {
-				c.Ctx().WriteString(common.ExecuteRequest(db, c.Ctx()))
+				c.Ctx().WriteString(common.ExecuteRequest(db, c.Ctx(), authServe))
 			}
 			return
 		}
@@ -155,7 +154,7 @@ func (c *IndexController) PostIndex() {
 			c.GetIndex()
 			return
 		}
-		db, err := sqlx.Open(serve.Driver, fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8&parseTime=true&loc=Local", serve.User, serve.Password, serve.Host, serve.Port))
+		db, err := sqlx.Open(serve.Driver, serve.DSN(""))
 		if err != nil {
 			c.clearAuthSession()
 			c.hasError = err.Error()
@@ -171,7 +170,7 @@ func (c *IndexController) PostIndex() {
 		}
 		defer db.Close()
 		c.saveAuthSession(serve)
-		common.InitProcess(db, c.Ctx())
+		common.InitProcess(db, c.Ctx(), &serve)
 		c.Ctx().Redirect("/mywebsql/index", 302)
 	}
 

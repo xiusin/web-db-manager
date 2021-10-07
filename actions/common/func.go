@@ -12,7 +12,6 @@ import (
 	"github.com/xiusin/pine/di"
 	"github.com/xiusin/pine/sessions"
 	"github.com/xiusin/web-db-manager/actions/render"
-	"github.com/xiusin/web-db-manager/common"
 )
 
 func GetServerList() {
@@ -101,19 +100,20 @@ func PrintDbList(db *sqlx.DB, sess sessions.AbstractSession) (string, []string, 
 	if err != nil {
 		return "", nil, err
 	}
-	if sess.Get("db.name") == "" {
-		count := 0
-		selDb := ""
-		stmtDbs := []string{"information_schema", "performance_schema", "mysql", "test"}
-		for _, s := range dblist {
-			if exist, _ := common.InArray(s, stmtDbs); exist {
-				count++
-			} else {
-				selDb = s
-			}
-		}
-		sess.Set("db.name", selDb)
-	}
+	// 不自动选择数据库
+	// if sess.Get("db.name") == "" {
+	// 	count := 0
+	// 	selDb := ""
+	// 	stmtDbs := []string{"information_schema", "performance_schema", "mysql", "test"}
+	// 	for _, s := range dblist {
+	// 		if exist, _ := common.InArray(s, stmtDbs); exist {
+	// 			count++
+	// 		} else {
+	// 			selDb = s
+	// 		}
+	// 	}
+	// 	sess.Set("db.name", selDb)
+	// }
 	html := ""
 	if curdb := sess.Get("db.name"); curdb != "" {
 		data, _ := di.MustGet(RenderService).(*render.Plush).Exec("dblist.php", pine.H{
@@ -168,10 +168,10 @@ func GetFunctions(db *sqlx.DB, currentDbName string) []ProcedureOrFunction {
 	if currentDbName == "" {
 		return nil
 	}
-	querySql := "show procedure status where db = '" + currentDbName + "'"
+	querySql := "show function status where db = '" + currentDbName + "'"
 	rets := []ProcedureOrFunction{}
 	if err := db.Select(&rets, querySql); err != nil {
-		pine.Logger().Error("获取数据库Procedures异常", err)
+		pine.Logger().Error("获取数据库函数异常", err)
 	}
 	return rets
 }
@@ -210,7 +210,6 @@ func GetDatabaseTreeHTML(db *sqlx.DB, dblist []string, currentDbName string) str
 		functions := GetFunctions(db, currentDbName)
 		triggers := GetTriggers(db, currentDbName)
 		events := GetEvents(db, currentDbName)
-
 		html, _ = GetPlush().Exec("objtree.php", pine.H{
 			"tables":     tables,
 			"views":      views,
@@ -326,9 +325,10 @@ func sqlEditor2Js(id, init string) string {
 			});`
 }
 
-func ExecuteRequest(db *sqlx.DB, ctx *pine.Context) string {
+func ExecuteRequest(db *sqlx.DB, ctx *pine.Context, auth *Server) string {
 	html := ""
-	if output := ctx.PostValue("type"); output != "download" {
+	output := ctx.PostValue("id")
+	if output != "export" {
 		html += startForm(db)
 	}
 	// todo 同时存在Post和get参数时如何获取不同的值
@@ -343,18 +343,20 @@ func ExecuteRequest(db *sqlx.DB, ctx *pine.Context) string {
 		queryType = postType
 	}
 	ctx.RequestCtx.QueryArgs().Set("type", queryType)
-	pine.Logger().Debug("Exec Func", "Process::"+queryType)
+	pine.Logger().Debug("Process::" + queryType)
 	if queryType != "" {
-		html += InitProcess(db, ctx).exec(queryType)
+		html += InitProcess(db, ctx, auth).exec(queryType)
 	}
-	html += "</form></body></html>"
+	if output != "export" {
+		html += "</form></body></html>"
+	}
 	return html
 }
 
 func startForm(db *sqlx.DB) string {
 	return "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">" +
 		"<html xmlns=\"http://www.w3.org/1999/xhtml\" style=\"overflow:hidden;width:100%;height:100%\">\n" +
-		"<head><title>MyWebSQL</title>\n" +
+		"<head><title>Go WebDbManager</title>\n" +
 		"</head><body class=\"dialogbody\" style=\"margin:0px;overflow:hidden;width:100%;height:100%\">\n" +
 		"<div id=\"popup_overlay\" class=\"ui-widget-overlay\">" +
 		"<div><span><img src=\"/mywebsql/themes/default/images/loading.gif\" alt=\"\" /></span></div>" +

@@ -28,9 +28,8 @@
 			<ul class="ui-state-default">
 				<li class="option mysql4 mysql mysql5 mysqli pgsql sqlite sqlite3"><a class="iimprt" href="javascript:dataImport()" title="<%= T("Import multiple queries from batch file") %>"><%= T("Import batch file") %>...</a></li>
 				<li class="option mysql4 mysql mysql5 mysqli pgsql sqlite sqlite3"><a class="iimprt" href="javascript:tableImport()" title="<%= T("Import table data from external file") %>"><%= T("Import table data") %>...</a></li>
-				<li class="db option mysql4 mysql mysql5 pgsql mysqli sqlite sqlite3"><a class="iexpdb" href="javascript:dataExport()" title="<%= T("Export database to batch file as sql dump") %>"><%= T("Export database") %>...</a></li>
 				<li class="db"><a class="iexprt" href="javascript:resultsExport()" title="<%= T("Export query results to clipboard or files") %>"><%= T("Export current results") %>...</a></li>
-				<li class="db option mysql4 mysql5 mysql mysqli"><a class="iexpdb" href="javascript:dataBackup()" title="<%= T("Backup database on the server as sql dump") %>"><%= T("Backup Database") %>...</a></li>
+				<!-- <li class="db option mysql4 mysql5 mysql mysqli"><a class="iexpdb" href="javascript:dataBackup()" title="<%= T("Backup database on the server as sql dump") %>"><%= T("Backup Database") %>...</a></li> -->
 			</ul>
 		</li>
 

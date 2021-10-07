@@ -2,6 +2,7 @@ package common
 
 import (
 	"database/sql"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -29,6 +30,10 @@ type Server struct {
 	User       string
 	Password   string
 	Port       string
+}
+
+func (s *Server) DSN(name string) string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/"+name+"?charset=utf8&parseTime=true&loc=Local", s.User, s.Password, s.Host, s.Port)
 }
 
 const BACKUP_FOLDER = "/backups/"
@@ -265,6 +270,38 @@ type CreateViewCommand struct {
 	CreateView          string `db:"Create View"`
 	CharacterSetClient  string `db:"character_set_client"`
 	CollationConnection string `db:"collation_connection"`
+}
+
+type CreateTriggerCommand struct {
+	Trigger             string        `db:"Trigger"`
+	Event               string        `db:"Event"`
+	Table               string        `db:"Table"`
+	Statement           string        `db:"Statement"`
+	Timing              string        `db:"Timing"`
+	Created             *sql.NullTime `db:"Created"`
+	SqlMode             string        `db:"sql_mode"`
+	Definer             string        `db:"Definer"`
+	CharacterSetClient  string        `db:"character_set_client"`
+	CollationConnection string        `db:"collation_connection"`
+	DatabaseCollation   string        `db:"Database Collation"`
+}
+
+type CreateFunctionCommand struct {
+	Function            string `db:"Function"`
+	SqlMode             string `db:"sql_mode"`
+	CreateFunction      string `db:"Create Function"`
+	CharacterSetClient  string `db:"character_set_client"`
+	CollationConnection string `db:"collation_connection"`
+	DatabaseCollation   string `db:"Database Collation"`
+}
+
+type CreateProcedureCommand struct {
+	Procedure           string `db:"Procedure"`
+	SqlMode             string `db:"sql_mode"`
+	CreateProcedure     string `db:"Create Procedure"`
+	CharacterSetClient  string `db:"character_set_client"`
+	CollationConnection string `db:"collation_connection"`
+	DatabaseCollation   string `db:"Database Collation"`
 }
 
 type Engine struct {

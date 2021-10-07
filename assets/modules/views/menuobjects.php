@@ -14,7 +14,7 @@
 		<li class="option mysql5 mysqli mysql pgsql"><a class="ifunc" href="javascript:objCreate(3, [name])" title="<%= T("Create a new user defined function in the database") %>"><%= T("Create Function") %></a></li>
 		<li class="option mysql5 mysqli mysql pgsql sqlite sqlite3"><a class="itrig" href="javascript:objCreate(4, [name])" title="<%= T("Create a new trigger in the database") %>"><%= T("Create Trigger") %></a></li>
 		<li class="option mysql5 mysqli mysql"><a class="ievt" href="javascript:objCreate(5, [name])" title="<%= T("Create a new event in the database") %>"><%= T("Create Event") %></a></li>
-		<li class="option pgsql"><a class="ischm" href="javascript:objCreate(6, [name])" title="<%= T("Create a new schema in the database") %>"><%= T("Create Schema") %>...</a></li>
+		<li class="option pgsql"><a class="ischm" href="javascript:objCreate(6, [name])" title="<%= T("Create a new schema in the database") %>"><%= T("Create Schema") %></a></li>
 	</ul>
 </div>
 
@@ -24,7 +24,7 @@
 	<li><a href="tableInsert([name])"><%= T("Insert statement") %></a></li>
 	<li><a href="tableUpdate([name])"><%= T("Update statement") %></a></li>
 	<li class="option mysql4 mysql5 mysqli mysql pgsql"><a href="tableDescribe([name])"><%= T("Describe") %></a></li>
-	<li class="option mysql4 mysql5 mysqli mysql sqlite sqlite3"><a href="showCreateCmd('table',	[name])"><%= T("Show create command") %></a></li>
+	<li class="option mysql4 mysql5 mysqli mysql sqlite sqlite3"><a href="showCreateCmd('table', [name])"><%= T("Show create command") %></a></li>
 	<li><a href="tableViewData([name])"><%= T("View data") %></a></li>
 	<li class="option mysql4 mysql5 mysqli mysql sqlite sqlite3"><a href="javascript:void(0)"><%= T("Alter Table") %> &raquo;</a>
 		<ul class="ui-state-default">

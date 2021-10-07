@@ -1,6 +1,11 @@
 package common
 
+import (
+	"github.com/xiusin/logger"
+)
+
 type Config struct {
+	LogLevel    logger.Level
 	Port        uint
 	HashKey     string
 	BlockKey    string
@@ -14,6 +19,7 @@ const ServiceICache = "cache.AbstractCache"
 
 func init() {
 	Appcfg = &Config{
+		LogLevel:    logger.DebugLevel,
 		HashKey:     "the-big-and-secret-fash-key-here",
 		BlockKey:    "lot-secret-of-characters-big-too",
 		Port:        3307,

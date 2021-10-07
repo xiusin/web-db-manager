@@ -17,6 +17,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/xiusin/pine"
 	"github.com/xiusin/web-db-manager/common"
+	"xorm.io/xorm"
+	"xorm.io/xorm/schemas"
 )
 
 const trimChar = " \r\n\t;"
@@ -27,6 +29,8 @@ type Process struct {
 	dbname     string
 	lastSQL    string
 	affectRows int64
+	engine     *xorm.Engine
+	auth       *Server
 	formData   struct {
 		id    string
 		page  int
@@ -36,10 +40,11 @@ type Process struct {
 	}
 }
 
-func InitProcess(db *sqlx.DB, ctx *pine.Context) *Process {
+func InitProcess(db *sqlx.DB, ctx *pine.Context, auth *Server) *Process {
 	p := &Process{
 		db:      db,
 		Context: ctx,
+		auth:    auth,
 	}
 	p.SelectVersion()
 
@@ -88,7 +93,7 @@ func (p *Process) Showinfo() string {
 		return string(p.Render("showinfo", pine.H{
 			"TYPE":    p.formData.id,
 			"NAME":    p.formData.table,
-			"COMMAND": cmd,
+			"COMMAND": template.HTML(cmd),
 			"SQL":     p.lastSQL,
 		}))
 	}
@@ -355,7 +360,34 @@ func (p *Process) setDbVar(variable, value string) {
 }
 
 func (p *Process) sanitizeCreateCommand(cmd string) string {
-	return regexp.MustCompile(`[\n|\r]?[\n]+`).ReplaceAllString(cmd, "<br/>")
+
+	// if ($type == "view"){
+	// 	$str = str_replace(" DEFINER=", "<br>DEFINER=", $str);
+	// 	$str = str_replace(" SQL SECURITY ", "<br>SQL SECURITY ", $str);
+	// 	$str = str_replace(" AS (", "<br> AS<br>(", $str);
+	// }
+	// else if ($type == "procedure")
+	// {
+	// 	$str = str_replace(" DEFINER=", "<br>DEFINER=", $str);
+	// 	$str = str_replace(" PROCEDURE ", "<br>PROCEDURE ", $str);
+	// 	$str = str_replace("BEGIN", "<br>BEGIN<br>", $str);
+	// 	$str = str_replace(" END", "<br>END", $str);
+
+	// }
+	// else
+	cmd = strReplace(
+		[]string{" DEFINER=", " FUNCTION ", "BEGIN", "END", " THEN ", "\\n"},
+		[]string{"<br>DEFINER=", "<br>FUNCTION ", "<br>BEGIN<br> ", "<br>END", " THEN<br>　", "<br>"},
+		cmd)
+
+	cmd = regexp.MustCompile(`;\s*(SET|DECLARE|IF|ELSEIF|END|RETURN)`).ReplaceAllString(cmd, "; <br>　$1")
+	// cmd = regexp.MustCompile(`^(SET|DECLARE|IF|ELSEIF|END|RETURN)`).ReplaceAllString(cmd, "　$1")
+	// else if ($type == "trigger")
+	// {
+	// 	$str = str_replace("\n", "<br>", $str);
+	// }
+
+	return regexp.MustCompile(`[\n|\r]?[\n]+`).ReplaceAllString(cmd, "<br>")
 }
 
 func (p *Process) selectFromTable() string {
@@ -493,13 +525,14 @@ func (p *Process) getQueryType(query string) map[string]bool {
 }
 
 func (p *Process) exec(module string) (html string) {
+	action := common.UcFirst(module)
 	defer func() {
 		if err := recover(); err != nil {
 			pine.Logger().Error(err)
-			html = p.createErrorGrid("解析执行方法失败", fmt.Errorf("%s", err))
+			html = p.createErrorGrid("解析执行方法失败: "+action, fmt.Errorf("%s", err))
 		}
 	}()
-	val := reflect.ValueOf(&p).Elem().MethodByName(common.UcFirst(module))
+	val := reflect.ValueOf(&p).Elem().MethodByName(action)
 	if !val.IsValid() {
 		html = p.createErrorGrid("无法解析处理句柄", nil)
 	} else {
@@ -534,8 +567,8 @@ func (p *Process) createErrorGrid(query string, err error, params ...int) string
 	if len(params) > 1 {
 		affectedRows = params[1]
 	}
-
-	grid := "<div id='results'>\n"
+	grid := "<link rel=\"stylesheet\" type=\"text/css\" href=\"/mywebsql/cache?css=theme,default\" />"
+	grid += "<div id='results'>\n"
 	if numQueries > 0 {
 		grid += "<div class=\"message ui-state-default\">"
 		var msg string
@@ -595,9 +628,7 @@ func (p *Process) Infoserver() string {
 	if p.dbname == "" {
 		v["JS"] = `parent.$("#main-menu").find(".db").hide();`
 	}
-	pine.Logger().Debug("V", v)
 	grid += string(p.Render("infoserver", v))
-
 	return grid
 }
 
@@ -1159,25 +1190,45 @@ func (p *Process) getCreateCommand(typo, name string) string {
 
 	if typo == "trigger" {
 		sql = "show triggers where `trigger` = '" + name + "'"
+		createCommand = &CreateTriggerCommand{}
 	} else {
-		if typo == "oview" {
+		if typo == "oview" || typo == "view" {
 			typo = "view"
 			createCommand = &CreateViewCommand{}
 		}
 		if typo == "table" {
 			createCommand = &CreateCommand{}
 		}
+
+		if typo == "function" {
+			createCommand = &CreateFunctionCommand{}
+		}
+
+		if typo == "procedure" {
+			createCommand = &CreateProcedureCommand{}
+		}
+
 		sql = "show create " + typo + " `" + name + "`"
 	}
 	if err := p.db.Get(createCommand, sql); err != nil {
-		pine.Logger().Warning("查询创建语句异常", err)
+		panic(err)
 	}
 	p.lastSQL = sql
 	if typo == "view" {
 		cmd = createCommand.(*CreateViewCommand).CreateView
 	} else if typo == "table" {
 		cmd = createCommand.(*CreateCommand).CreateTable
+	} else if typo == "trigger" {
+		createCmd := createCommand.(*CreateTriggerCommand)
+		cmd = "create trigger `" + createCmd.Trigger + "`\r\n" + createCmd.Timing + " " +
+			createCmd.Event + " on `" + createCmd.Table + "`\r\nfor each row\r\n" + createCmd.Statement
+	} else if typo == "function" {
+		cmd = createCommand.(*CreateFunctionCommand).CreateFunction
+	} else if typo == "procedure" {
+		cmd = createCommand.(*CreateProcedureCommand).CreateProcedure
 	}
+	// _, cmd2 := common.FormatSQL(cmd)
+	// pine.Logger().Debug(cmd1, cmd2)
 	return cmd
 }
 
@@ -1629,6 +1680,7 @@ func (p *Process) Showcreate() string {
 	}
 
 	cmd := p.sanitizeCreateCommand(p.getCreateCommand(p.formData.id, p.formData.name))
+	// cmd := p.getCreateCommand(p.formData.id, p.formData.name)
 
 	v := pine.H{
 		"TYPE":    p.formData.id,
@@ -1636,7 +1688,7 @@ func (p *Process) Showcreate() string {
 		"COMMAND": template.HTML(cmd),
 		"TIME":    0,
 		"SQL":     template.HTML(p.lastSQL),
-		"MESSAGE": strReplace([]string{"{{TYPE}}", "{{NAME}}"}, []string{p.formData.id, p.formData.name}, T("Create command for {{TYPE}} {{NAME}}")),
+		"MESSAGE": T("Create command for {{TYPE}} {{NAME}}", p.formData.id, p.formData.name),
 	}
 
 	return string(p.Render("showcreate", v))
@@ -1883,4 +1935,96 @@ func (p *Process) row2arrMap(rows *sql.Rows) ([]map[string]interface{}, error) {
 	}
 	err := rows.Close()
 	return list, err
+}
+
+func (p *Process) Export() string {
+
+	if p.formData.id == "export" {
+		orm := p.getXORM()
+		pd := p.PostData()
+		tables := pd["tables[]"]
+
+		metas, _ := orm.DBMetas()
+
+		schemaTables := []*schemas.Table{}
+		for _, v := range metas {
+			if exist, _ := common.InArray(v.Name, tables); exist {
+				schemaTables = append(schemaTables, v)
+			}
+		}
+		if len(schemaTables) == 0 {
+			return "请选择要导出的表"
+		}
+
+		p.Response.Header.Set("Content-Disposition", "attachment;filename="+p.dbname+".sql")
+
+		orm.DumpTables(schemaTables, p.Response.BodyWriter())
+		return ""
+	}
+
+	p.db.Exec("USE " + p.dbname)
+	tables := getTables(p.db, p.dbname)
+	// views := getViews(p.db, p.dbname)
+	// procedures := GetProcedures(p.db, p.dbname)
+	// functions := GetFunctions(p.db, p.dbname)
+	// triggers := GetTriggers(p.db, p.dbname)
+	// events := GetEvents(p.db, p.dbname)
+	tableNames := []string{}
+	for _, v := range tables {
+		tableNames = append(tableNames, v.Name)
+	}
+
+	// viewNames := []string{}
+	// for _, v := range views {
+	// 	viewNames = append(viewNames, v.Name)
+	// }
+
+	// procNames := []string{}
+	// for _, v := range procedures {
+	// 	procNames = append(procNames, v.Name)
+	// }
+
+	// funcNames := []string{}
+	// for _, v := range functions {
+	// 	funcNames = append(funcNames, v.Name)
+	// }
+
+	// triggerNames := []string{}
+	// for _, v := range triggers {
+	// 	triggerNames = append(triggerNames, v.TriggerName)
+	// }
+
+	// eventNames := []string{}
+	// for _, v := range events {
+	// 	eventNames = append(eventNames, v.EventName)
+	// }
+	return string(p.Render("export", pine.H{
+		"list": pine.H{
+			"tables": template.HTML(jsonEncode(&tableNames)),
+			// "views":      template.HTML(jsonEncode(&viewNames)),
+			// "procedures": template.HTML(jsonEncode(&procNames)),
+			// "functions":  template.HTML(jsonEncode(&funcNames)),
+			// "triggers":   template.HTML(jsonEncode(&triggerNames)),
+			// "events":     template.HTML(jsonEncode(&eventNames)),
+		},
+	}))
+}
+
+func (p *Process) Exportres() string {
+	return string(p.Render("exportres", nil))
+}
+
+func (p *Process) downloadResults() {
+
+}
+
+func (p *Process) getXORM() *xorm.Engine {
+	var err error
+	if p.engine == nil {
+		p.engine, err = xorm.NewEngine(p.auth.Driver, p.auth.DSN(p.dbname))
+		if err != nil {
+			panic(err)
+		}
+	}
+	return p.engine
 }

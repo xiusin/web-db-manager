@@ -65,15 +65,15 @@ func (c *MyWebSql) clearAuthSession() {
 	c.Session().Remove("auth")
 }
 
-func (c *MyWebSql) GetSQLX() *sqlx.DB {
+func (c *MyWebSql) GetSQLX() (*sqlx.DB, *common.Server) {
 	var serve common.Server
 	sess := c.Session().Get("auth")
 
 	if len(sess) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	json.Unmarshal([]byte(sess), &serve)
 	db, _ := sqlx.Open(serve.Driver, fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8&parseTime=true&loc=Local", serve.User, serve.Password, serve.Host, serve.Port))
-	return db
+	return db, &serve
 }
