@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,13 +13,16 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/xiusin/pine"
-	pine_bigcache "github.com/xiusin/pine/cache/providers/pine-bigcache"
+	pine_bigcache "github.com/xiusin/pine/cache/providers/bigcache"
 	"github.com/xiusin/pine/di"
 	"github.com/xiusin/pine/sessions"
 	cacheProvider "github.com/xiusin/pine/sessions/providers/cache"
 	"github.com/xiusin/web-db-manager/actions"
 	"github.com/xiusin/web-db-manager/common"
 )
+
+//go:embed assets/*
+var assets embed.FS
 
 func main() {
 	app := pine.New()
@@ -42,7 +46,7 @@ func main() {
 		return loggers, nil
 	}, false)
 
-	cacheHandler := pine_bigcache.New(bigcache.DefaultConfig(24 * time.Hour))
+	cacheHandler := pine_bigcache.New(bigcache.DefaultConfig(time.Hour))
 
 	di.Set(common.ServiceICache, func(builder di.AbstractBuilder) (i interface{}, err error) {
 		return cacheHandler, nil
@@ -56,16 +60,12 @@ func main() {
 		return sess, nil
 	}, true)
 
-	pine.RegisterErrorCodeHandler(500, func(ctx *pine.Context) {
-		if ctx.IsAjax() {
-			_ = ctx.WriteJSON(pine.H{"code": http.StatusInternalServerError, "message": ctx.Msg})
-		} else {
-			ctx.Abort(http.StatusInternalServerError, ctx.Msg)
-		}
+	app.SetRecoverHandler(func(ctx *pine.Context) {
+		ctx.Abort(http.StatusInternalServerError, ctx.Msg)
 	})
 
 	// 注册静态地址
-	app.Static("/mywebsql/", common.GetRootPath("assets"), 1)
+	app.StaticFS("/mywebsql/", assets, "assets")
 	app.StaticFile("favicon.ico", common.GetRootPath("assets/favicon.ico"))
 
 	app.ANY("/", func(ctx *pine.Context) { ctx.Redirect("/mywebsql/index") })

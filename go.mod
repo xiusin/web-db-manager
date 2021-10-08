@@ -9,14 +9,11 @@ require (
 	github.com/gobuffalo/helpers v0.6.2 // indirect
 	github.com/gobuffalo/plush v3.8.3+incompatible
 	github.com/gobuffalo/tags v2.1.7+incompatible // indirect
-	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gorilla/securecookie v1.1.1
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/klauspost/compress v1.13.6 // indirect
-	github.com/lib/pq v1.10.2 // indirect
 	github.com/mattn/go-colorable v0.1.11 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/mattn/go-sqlite3 v1.14.8 // indirect
 	github.com/valyala/fasthttp v1.30.0 // indirect
 	github.com/xiusin/logger v0.0.6-0.20210624030332-1618e61b92ce
 	github.com/xiusin/pine v0.0.0-20211004023922-26e85b89d096
@@ -25,4 +22,4 @@ require (
 	xorm.io/xorm v1.2.5
 )
 
-replace github.com/xiusin/pine => D:\projects\src\pine
+replace github.com/xiusin/pine => ../pine
