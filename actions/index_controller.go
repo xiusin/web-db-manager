@@ -140,7 +140,6 @@ func (c *IndexController) PostIndex() {
 	authUser := c.Ctx().PostValue("auth_user")
 	authPwd := c.Ctx().PostValue("auth_pwd")
 	server := c.Ctx().PostValue("server")
-
 	if serve, ok := common.SERVER_LIST[server]; !ok {
 		c.hasError = "登录服务器失败"
 		c.GetIndex()
