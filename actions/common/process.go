@@ -73,10 +73,9 @@ func (p *Process) Info() string {
 	if p.dbname != "" {
 		tip := T("Database summary") + ": [" + p.dbname + "]"
 		html = []byte(p.showDbInfoGrid(tip))
+	} else {
+		html = []byte(p.Infoserver())
 	}
-	//  else {
-	// html = []byte(p.createResultGrid(""))
-	// }
 	return string(html)
 }
 
@@ -238,9 +237,9 @@ func (p *Process) dropObject(name, typo string) error {
 	return err
 }
 
-func (p *Process) getObjectTypes() []string {
-	return []string{"tables", "views", "procedures", "functions", "triggers", "events"}
-}
+// func (p *Process) getObjectTypes() []string {
+// 	return []string{"tables", "views", "procedures", "functions", "triggers", "events"}
+// }
 
 func (p *Process) getWarnings() map[int]string {
 	var ret = map[int]string{}
@@ -249,7 +248,7 @@ func (p *Process) getWarnings() map[int]string {
 	} else {
 		for rows.Next() {
 			results := make(map[string]interface{})
-			err = rows.MapScan(results)
+			rows.MapScan(results)
 			code, _ := strconv.Atoi(string(results["Code"].([]byte)))
 			ret[code] = string(results["Message"].([]byte))
 		}
@@ -604,7 +603,6 @@ func (p *Process) Infoserver() string {
 	if len(variables) == 0 {
 		return ""
 	}
-
 	v := pine.H{"JS": "", "SERVER_NAME": "MySQL"}
 
 	for _, variable := range variables {
@@ -626,7 +624,7 @@ func (p *Process) Infoserver() string {
 	}
 
 	if p.dbname == "" {
-		v["JS"] = `parent.$("#main-menu").find(".db").hide();`
+		v["JS"] = template.HTML(`parent.$("#main-menu").find(".db").hide();`)
 	}
 	grid += string(p.Render("infoserver", v))
 	return grid
@@ -767,13 +765,14 @@ func (p *Process) createResultGrid(query string) string {
 	grid += "<tr id=\"fhead\">"
 	grid += "<th class=\"th tch\"><div>#</div></th>"
 
+	// 标记是否可以编辑
 	ed := p.Session().Get("select.can_limit") == "true" && p.Session().Get("select.unique_table") != ""
 
 	if ed {
 		grid += "<th class=\"th_nosort tch\"><div><input class=\"check-all\" type=\"checkbox\" onclick=\"resultSelectAll()\" title=\"" + T("Select/unselect All records") + "\" /></div></th>"
 	}
 
-	var pkey, ukey, mkey []string
+	var pkey, ukey []string //, mkey
 	fieldNames := ""
 	fieldInfo, _ := json.Marshal(&f)
 
@@ -791,9 +790,9 @@ func (p *Process) createResultGrid(query string) string {
 			ukey = append(ukey, column.ColumnName)
 			grid += "<span class='uk' title='" + T("Unique key column") + "'>&nbsp;</span>"
 		}
-		if column.MKey && !column.Blob {
-			mkey = append(mkey, column.ColumnName)
-		}
+		// if column.MKey && !column.Blob {
+		// 	mkey = append(mkey, column.ColumnName)
+		// }
 		grid += column.ColumnName
 		// 排序应用
 		if p.Session().Get("select.sortcol") == strconv.Itoa(i+1) {
@@ -823,7 +822,7 @@ func (p *Process) createResultGrid(query string) string {
 			grid += "<td class=\"tch\"><input type=\"checkbox\" /></td>"
 		}
 		for _, column := range f {
-			rs, _ := r[column.ColumnName]
+			rs := r[column.ColumnName]
 			class := "tl"
 			if column.Numeric {
 				class = "tr"
@@ -845,7 +844,7 @@ func (p *Process) createResultGrid(query string) string {
 					} else if v, ok := rs.(time.Time); ok {
 						data = v.Format(common.TimeFormat) // TODO 根据时区返回时间
 					} else {
-						pine.Logger().Debug("字段"+column.ColumnName+"类型", reflect.ValueOf(rs).Type().String())
+						// pine.Logger().Debug("字段"+column.ColumnName+"类型", reflect.ValueOf(rs).Type().String())
 						data = fmt.Sprintf("%s", rs)
 					}
 				}
@@ -853,7 +852,7 @@ func (p *Process) createResultGrid(query string) string {
 				data = p.getBlobDisplay(rs, column, j, ed)
 			}
 
-			grid += "<td nowrap=\"nowrap\" class=\"" + class + "\">" + data + "</td>"
+			grid += "<td nowrap=\"nowrap\" class=\"" + class + "\">" + template.HTMLEscapeString(data) + "</td>"
 		}
 		grid += "</tr>\n"
 	}
@@ -969,17 +968,17 @@ func (p *Process) getBlobDisplay(rs interface{}, info *Column, numRecord int, ed
 
 	span += "</span>"
 
-	if binary {
-		//$span .= "<span title=\"" . str_replace('{{NUM}}', $length, __('Click to view/edit column data [{{NUM}} Bytes]')). "\" class=\"blob $btype\" $extra>&nbsp;</span>";
-		//return $span;
-	}
+	// if binary {
+	// 	//$span .= "<span title=\"" . str_replace('{{NUM}}', $length, __('Click to view/edit column data [{{NUM}} Bytes]')). "\" class=\"blob $btype\" $extra>&nbsp;</span>";
+	// 	//return $span;
+	// }
 	data := ""
 	if rs != nil {
 		data = string(rs.([]byte))
 	} else {
 		rs = "NULL"
 	}
-	span += "<span class=\"d\" style=\"display:none\">" + data + "</span>"
+	span += "<span class=\"d\" style=\"display:none\">" + template.HTMLEscapeString(data) + "</span>"
 
 	if !editable && rs != nil && MAX_TEXT_LENGTH_DISPLAY < length {
 		extra = `onclick="vwTxt(this, &quot;` + size + `&quot;, '` + btype + `')"`
@@ -1042,6 +1041,7 @@ func (p *Process) showDbInfoGrid(message string) string {
 			case reflect.Uint, reflect.Uint16, reflect.Uint8, reflect.Uint32, reflect.Uint64:
 				data = fmt.Sprintf("%d", vs.Field(i).Uint())
 			case reflect.String:
+				class = "tl"
 				data = vs.Field(i).String()
 			default:
 				sqlField := vs.Field(i)
@@ -1077,7 +1077,7 @@ func (p *Process) showDbInfoGrid(message string) string {
 			}
 
 			class += " text"
-			grid += "<td nowrap=\"nowrap\" id=\"r" + strconv.Itoa(j) + "f" + strconv.Itoa(i) + "\" class=\"" + class + "\">" + data + "</td>\n"
+			grid += "<td nowrap=\"nowrap\" id=\"r" + strconv.Itoa(j) + "f" + strconv.Itoa(i) + "\" class=\"" + class + "\">" + template.HTMLEscapeString(data) + "</td>\n"
 		}
 		grid += "</tr>\n"
 	}
@@ -1115,7 +1115,7 @@ func (p *Process) createDbInfoGrid(query string, numQueries int) string {
 	}
 
 	if numQueries == 1 {
-		match := regexp.MustCompile("[\\n|\\r]?[\\n]+")
+		match := regexp.MustCompile(`[\n|\r]?[\n]+`)
 		formattedQuery := match.ReplaceAllString(query, "<br>")
 		grid += "<div class='sql-text ui-state-default'>" + formattedQuery + "</div>"
 		warnings := p.getWarnings()
@@ -1356,11 +1356,11 @@ func (p *Process) Enginetype() string {
 }
 
 func (p *Process) Altertbl() string {
-	if p.formData.id == "alter" {
+	// if p.formData.id == "alter" {
 
-	} else {
+	// } else {
 
-	}
+	// }
 	return "修改结构"
 }
 
@@ -1481,10 +1481,11 @@ func (p *Process) renameObject(newName string) error {
 		} else {
 			return err
 		}
-	} else {
-		//cmd := p.getCreateCommand(p.formData.id, p.formData.name)
-		//search := ""	// TODO 忽略大小写匹配
 	}
+	//  else {
+	//cmd := p.getCreateCommand(p.formData.id, p.formData.name)
+	//search := ""	// TODO 忽略大小写匹配
+	// }
 	return nil
 }
 
@@ -1735,14 +1736,15 @@ func (p *Process) copyObject(newName string) error {
 		if _, err = p.db.Exec(query); err != nil {
 			return err
 		}
-	} else {
-		//cmd := p.getCreateCommand(p.formData.id, p.formData.name)
-		//$command = $this->getCreateCommand($type, $name);
-		//$search = '/(create.*'.$type. ' )('.$name.'|\`'.$name.'\`)/i';
-		//$replace = '${1} `'.$new_name.'`';
-		//$query = preg_replace($search, $replace, $command, 1);
-		//$result = $this->query($query);
 	}
+	// else {
+	//cmd := p.getCreateCommand(p.formData.id, p.formData.name)
+	//$command = $this->getCreateCommand($type, $name);
+	//$search = '/(create.*'.$type. ' )('.$name.'|\`'.$name.'\`)/i';
+	//$replace = '${1} `'.$new_name.'`';
+	//$query = preg_replace($search, $replace, $command, 1);
+	//$result = $this->query($query);
+	// }
 
 	return err
 
@@ -1806,7 +1808,7 @@ func (p *Process) displayProcessList(msg, typo string) string {
 
 		for rows.Next() {
 			results := make(map[string]interface{})
-			err = rows.MapScan(results)
+			rows.MapScan(results)
 
 			id := string(results["Id"].([]byte))
 			command := string(results["Command"].([]byte))
@@ -2012,10 +2014,6 @@ func (p *Process) Export() string {
 
 func (p *Process) Exportres() string {
 	return string(p.Render("exportres", nil))
-}
-
-func (p *Process) downloadResults() {
-
 }
 
 func (p *Process) getXORM() *xorm.Engine {
