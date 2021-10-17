@@ -14,14 +14,14 @@ import (
 func Cache(ctx *pine.Context) {
 	themePath := ctx.Session().Get("theme_path")
 	var byts bytes.Buffer
-	script := ctx.GetString("script")
-	css := ctx.GetString("css")
+	script, _ := ctx.Input().GetString("script")
+	css, _ := ctx.Input().GetString("css")
 	if script != "" {
 		scriptPath := common.GetRootPath("assets/js")
 		scripts := strings.Split(script, ",")
 		ctx.Response.Header.Set("mime-type", "text/javascript")
 		ctx.Response.Header.Set("content-type", "text/javascript")
-		r := regexp.MustCompile("^(\\w+/){0,2}\\w+$")
+		r := regexp.MustCompile(`^(\w+/){0,2}\w+$`)
 		for _, s := range scripts {
 			if !r.MatchString(s) {
 				continue
@@ -40,7 +40,7 @@ func Cache(ctx *pine.Context) {
 		styles := strings.Split(css, ",")
 		ctx.Response.Header.Set("mime-type", "text/css")
 		ctx.Response.Header.Set("content-type", "text/css")
-		r := regexp.MustCompile("^(\\w+/){0,2}\\w+$")
+		r := regexp.MustCompile(`^(\w+/){0,2}\w+$`)
 		for _, s := range styles {
 			if !r.MatchString(s) {
 				continue

@@ -317,7 +317,8 @@ func sqlEditorJs(id, frameId, init string) string {
 }
 
 func sqlEditor2Js(id, init string) string {
-	return id + ` = CodeMirror.fromTextArea(document.getElementById("` + id + `"), { mode: "text/x-mysql",
+	return id + ` = CodeMirror.fromTextArea(document.getElementById("` + id + `"), { 
+				mode: "text/x-mysql",
 				lineNumbers: true, matchBrackets: true, indentUnit: 3,
 				height: "100%", tabMode : "default",
 				tabFunction : function() { document.getElementById("nav_query").focus(); },
@@ -327,22 +328,11 @@ func sqlEditor2Js(id, init string) string {
 
 func ExecuteRequest(db *sqlx.DB, ctx *pine.Context, auth *Server) string {
 	html := ""
-	output := ctx.PostValue("id")
+	output, _ := ctx.Input().GetString("id")
 	if output != "export" {
 		html += startForm(db)
 	}
-	// todo 同时存在Post和get参数时如何获取不同的值
-	queryType := ctx.GetString("type")
-	if queryType == "" {
-		queryType = "info"
-	}
-	ctx.RequestCtx.QueryArgs().Del("type")
-	postType := string(ctx.RequestCtx.FormValue("type"))
-
-	if postType != "" && (queryType == "query" || queryType == "info") {
-		queryType = postType
-	}
-	ctx.RequestCtx.QueryArgs().Set("type", queryType)
+	queryType, _ := ctx.Input().GetString("type")
 	pine.Logger().Debug("Process::" + queryType)
 	if queryType != "" {
 		html += InitProcess(db, ctx, auth).exec(queryType)

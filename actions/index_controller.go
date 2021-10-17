@@ -19,7 +19,8 @@ var AjaxResponse = []byte(`<div id="results">1</div>`)
 
 // GetIndex 总入口
 func (c *IndexController) GetIndex() {
-	if theme := c.Ctx().GetString("theme"); len(theme) > 0 {
+	theme, _ := c.Ctx().Input().GetString("theme")
+	if len(theme) > 0 {
 		c.Render().ViewData("THEME_PATH", theme)
 		c.Ctx().SetCookie("theme", theme, common.COOKIE_LIFETIME*60*60)
 		c.Ctx().Session().Set("theme_path", theme)
@@ -32,10 +33,12 @@ func (c *IndexController) GetIndex() {
 			c.Render().ViewData("THEME_PATH", common.DEFAULT_THEME)
 		}
 	}
-	if editor := c.Ctx().GetString("editor"); len(editor) > 0 {
+	editor, _ := c.Ctx().Input().GetString("editor")
+	if len(editor) > 0 {
 		c.Render().ViewData("SQL_EDITORTYPE", editor)
 		c.Ctx().SetCookie("editor", editor, common.COOKIE_LIFETIME*60*60)
-		if c.Ctx().GetString("x") == "1" {
+		x, _ := c.Ctx().Input().GetString("x")
+		if x == "1" {
 			c.Ctx().Write(AjaxResponse)
 			return
 		}
@@ -51,8 +54,8 @@ func (c *IndexController) GetIndex() {
 
 	if db, authServe := c.GetSQLX(); db == nil {
 		c.clearAuthSession()
-
-		if c.Ctx().GetString("q") == "wrkfrm" {
+		q, _ := c.Ctx().Input().GetString("q")
+		if q == "wrkfrm" {
 			c.Render().HTML("session_expired.php")
 			return
 		}
@@ -78,7 +81,8 @@ func (c *IndexController) GetIndex() {
 	} else {
 		defer db.Close()
 
-		if c.Ctx().PostValue("q") == "wrkfrm" {
+		q, _ := c.Ctx().Input().GetString("q")
+		if q == "wrkfrm" {
 			c.Ctx().SetContentType(pine.ContentTypeHTML)
 			if err := db.Ping(); err != nil {
 				c.Ctx().WriteString(err.Error())
@@ -88,11 +92,11 @@ func (c *IndexController) GetIndex() {
 			return
 		}
 
-		dbname := c.Ctx().GetString("db")
+		dbname, _ := c.Ctx().Input().GetString("db")
 		if dbname != "" && dbname != c.Session().Get("db.name") {
 			c.Session().Set("db.change", "1")
 			c.Session().Set("db.name", dbname)
-			if v, _ := c.Ctx().GetInt("x"); v == 1 {
+			if v, _ := c.Ctx().Input().GetInt("x"); v == 1 {
 				c.Ctx().Response.Header.SetContentType(pine.ContentTypeHTML)
 				c.Ctx().Write(AjaxResponse)
 			} else {
@@ -137,9 +141,9 @@ func (c *IndexController) GetIndex() {
 
 // PostIndex 登录提交
 func (c *IndexController) PostIndex() {
-	authUser := c.Ctx().PostValue("auth_user")
-	authPwd := c.Ctx().PostValue("auth_pwd")
-	server := c.Ctx().PostValue("server")
+	authUser, _ := c.Ctx().Input().GetString("auth_user")
+	authPwd, _ := c.Ctx().Input().GetString("auth_pwd")
+	server, _ := c.Ctx().Input().GetString("server")
 	if serve, ok := common.SERVER_LIST[server]; !ok {
 		c.hasError = "登录服务器失败"
 		c.GetIndex()

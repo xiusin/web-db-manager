@@ -54,15 +54,18 @@ func InitProcess(db *sqlx.DB, ctx *pine.Context, auth *Server) *Process {
 		p.db.Exec("USE " + p.dbname)
 	}
 
-	p.formData.query = strings.Trim(p.FormValue("query"), trimChar)
-	p.formData.table = strings.Trim(p.FormValue("name"), trimChar)
+	query, _ := p.Input().GetString("query")
+	p.formData.query = strings.Trim(query, trimChar)
+	name, _ := p.Input().GetString("name")
+	p.formData.table = strings.Trim(name, trimChar)
 	p.formData.name = p.formData.table
-	p.formData.id = p.FormValue("id")
+	p.formData.id, _ = p.Input().GetString("id")
 	p.formData.page = 1
 
 	if match, _ := regexp.MatchString(`^\d+$`, p.formData.table); match || p.formData.table == "" {
 		p.formData.page, _ = strconv.Atoi(p.formData.table)
-		p.formData.table = strings.Trim(p.FormValue("query"), trimChar)
+		qs, _ := p.Input().GetString("query")
+		p.formData.table = strings.Trim(qs, trimChar)
 	}
 
 	return p
@@ -81,7 +84,7 @@ func (p *Process) Info() string {
 
 // Showinfo 展示数据表或数据库的基本信息
 func (p *Process) Showinfo() string {
-	typo := p.PostString("id")
+	typo, _ := p.Input().GetString("id")
 	if typo == "table" || typo == "view" {
 		p.formData.id = "table"
 		return p.Query()
@@ -104,7 +107,7 @@ func (p *Process) Objcreate() string {
 	typo := "message ui-state-highlight"
 	var msg string
 	var refresh bool
-	objinfo := p.FormValue("objinfo")
+	objinfo, _ := p.Input().GetString("objinfo")
 	if objinfo != "" {
 		pine.Logger().Debug("createObj", objinfo)
 		msg = p.createDatabaseObject(objinfo)
@@ -204,13 +207,14 @@ func (p *Process) Databases() string {
 	byts, _ := json.Marshal(dbs)
 	datas := pine.H{"data": pine.H{"objects": template.HTML(byts)}, "objCount": len(dbs), "stats": nil}
 	if p.formData.id == "batch" {
-		postdata := p.PostData()
+		postdata := p.Input().GetForm().Value
 		status := map[string]int{"success": 0, "errors": 0}
 		databases := postdata["databases[]"]
 		pine.Logger().Warning("删除数据库", databases)
 		if len(databases) > 0 {
 			for _, database := range databases {
-				if p.FormValue("dropcmd") == "on" {
+				dropcmd, _ := p.Input().GetString("dropcmd")
+				if dropcmd == "on" {
 					if err := p.dropObject(database, "database"); err == nil {
 						status["success"]++
 					} else {
@@ -852,7 +856,7 @@ func (p *Process) createResultGrid(query string) string {
 				data = p.getBlobDisplay(rs, column, j, ed)
 			}
 
-			grid += "<td nowrap=\"nowrap\" class=\"" + class + "\">" + template.HTMLEscapeString(data) + "</td>"
+			grid += "<td nowrap=\"nowrap\" class=\"" + class + "\">" + data + "</td>"
 		}
 		grid += "</tr>\n"
 	}
@@ -1366,7 +1370,7 @@ func (p *Process) Altertbl() string {
 
 // Options 选项配置 用于配置系统内数据
 func (p *Process) Options() string {
-	pk := p.PostString("p", "ui")
+	pk, _ := p.Input().GetString("p", "ui")
 
 	pagesort := []string{"results", "editing", "misc", "ui"}
 
@@ -1492,7 +1496,9 @@ func (p *Process) renameObject(newName string) error {
 // Dbrepair 修复表
 func (p *Process) Dbrepair() string {
 	// TODO tables 必须得数组
-	if p.FormValue("optype") != "" && p.FormValue("tables[]") != "" {
+	optype, _ := p.Input().GetString("optype")
+	tables, _ := p.Input().GetString("tables[]")
+	if optype != "" && tables != "" {
 		return p.checkTables()
 	} else {
 		tableStrs := getTables(p.db, p.dbname)
@@ -1514,17 +1520,18 @@ func (p *Process) Dbrepair() string {
 }
 
 func (p *Process) checkTables() string {
-	typo := p.FormValue("optype")
+	typo, _ := p.Input().GetString("optype")
 	options := map[string]interface{}{}
 
-	postdata := p.PostData()
+	postdata := p.Input().GetForm().Value
 	pine.Logger().Debug("postData", postdata)
-	if p.FormValue("skiplog") == "on" {
+	skiplog, _ := p.Input().GetString("skiplog")
+	if skiplog == "on" {
 		options["skiplog"] = true
 	} else {
 		options["skiplog"] = false
 	}
-	options["checktype"] = p.PostValue("checktype")
+	options["checktype"], _ = p.Input().GetString("checktype")
 	options["repairtype"] = postdata["repairtype"]
 	tables := postdata["tables[]"]
 	checker := NewTableChecker(p.db)
@@ -1541,8 +1548,8 @@ func (p *Process) checkTables() string {
 func (p *Process) Dbcreate() string {
 	p.removeSelectSession([]string{"result", "pkey", "ukey", "mkey", "unique_table"})
 
-	name := p.FormValue("name")
-	dbSelect := p.FormValue("query")
+	name, _ := p.Input().GetString("name")
+	dbSelect, _ := p.Input().GetString("query")
 
 	sql := "create database `" + name + "`"
 
@@ -1755,7 +1762,7 @@ func (p *Process) Processes() string {
 	html := "<link href='/mywebsql/cache?css=theme,default,alerts,results' rel=\"stylesheet\" />\n"
 	typo := "message ui-state-highlight"
 	msg := T("Select a process and click the button to kill the process")
-	if val := p.PostData(); val != nil {
+	if val := p.Input().GetForm().Value; val != nil {
 		if prcids := val["prcid[]"]; len(prcids) > 0 {
 			killed := []string{}
 			missed := []string{}
@@ -1843,7 +1850,7 @@ func (p *Process) displayProcessList(msg, typo string) string {
 
 // Help 帮助页面
 func (p *Process) Help() string {
-	page := p.FormValue("p")
+	page, _ := p.Input().GetString("p")
 	if page == "" {
 		page = "queries"
 	}
@@ -1943,7 +1950,7 @@ func (p *Process) Export() string {
 
 	if p.formData.id == "export" {
 		orm := p.getXORM()
-		pd := p.PostData()
+		pd := p.Input().GetForm().Value
 		tables := pd["tables[]"]
 
 		metas, _ := orm.DBMetas()

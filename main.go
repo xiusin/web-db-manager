@@ -4,12 +4,10 @@ import (
 	"embed"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/allegro/bigcache/v3"
-	"github.com/xiusin/logger"
 
 	"github.com/gorilla/securecookie"
 	"github.com/xiusin/pine"
@@ -36,15 +34,6 @@ func main() {
 			ctx.Next()
 		}
 	})
-
-	di.Set(di.ServicePineLogger, func(builder di.AbstractBuilder) (i interface{}, err error) {
-		loggers := logger.New()
-		loggers.SetOutput(os.Stdout)
-		logger.SetDefault(loggers)
-		loggers.SetReportCaller(true, 3)
-		loggers.SetLogLevel(common.Appcfg.LogLevel)
-		return loggers, nil
-	}, false)
 
 	cacheHandler := pine_bigcache.New(bigcache.DefaultConfig(time.Hour))
 
@@ -77,7 +66,7 @@ func main() {
 		pine.WithGracefulShutdown(),
 		pine.WithCookieTranscoder(securecookie.New([]byte(common.Appcfg.HashKey), []byte(common.Appcfg.BlockKey))),
 		pine.WithoutStartupLog(true),
-		pine.WithServerName("xiusin/pinecms"),
+		pine.WithServerName("xiusin/pine"),
 		pine.WithCookie(true),
 	)
 }
