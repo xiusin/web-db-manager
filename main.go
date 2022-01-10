@@ -3,11 +3,11 @@ package main
 import (
 	"embed"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/allegro/bigcache/v3"
+	"github.com/valyala/fasthttp"
 
 	"github.com/gorilla/securecookie"
 	"github.com/xiusin/logger"
@@ -54,7 +54,7 @@ func main() {
 	}, true)
 
 	app.SetRecoverHandler(func(ctx *pine.Context) {
-		ctx.Abort(http.StatusInternalServerError, ctx.Msg)
+		ctx.Abort(fasthttp.StatusInternalServerError, fasthttp.StatusMessage(fasthttp.StatusInternalServerError))
 	})
 
 	// 注册静态地址

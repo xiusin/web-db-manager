@@ -2,3 +2,5 @@
 .idea
 __debug_bin
 runtime/dev-build
+wdm
+web-db-manager
