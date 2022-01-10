@@ -161,6 +161,7 @@ func (c *IndexController) PostIndex() {
 		if err != nil {
 			c.clearAuthSession()
 			c.hasError = err.Error()
+			c.Logger().Printf("连接数据库失败")
 			c.GetIndex()
 			return
 		}
@@ -168,12 +169,14 @@ func (c *IndexController) PostIndex() {
 		if err := db.Ping(); err != nil {
 			c.clearAuthSession()
 			c.hasError = err.Error()
+			c.Logger().Printf("db.Ping失败")
 			c.GetIndex()
 			return
 		}
 		defer db.Close()
 		c.saveAuthSession(serve)
 		common.InitProcess(db, c.Ctx(), &serve)
+		c.Logger().Printf("登录成功, 跳转页面")
 		c.Ctx().Redirect("/mywebsql/index", 302)
 	}
 

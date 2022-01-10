@@ -1,6 +1,7 @@
 package render
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,10 +17,11 @@ type Plush struct {
 	l     sync.RWMutex
 	dir   string
 	debug bool
+	fs    *embed.FS
 }
 
-func New(dir string, debug bool) *Plush {
-	t := &Plush{debug: debug, dir: dir}
+func New(dir string, fs *embed.FS, debug bool) *Plush {
+	t := &Plush{debug: debug, dir: dir, fs: fs}
 
 	t.cache = map[string]*plush.Template{}
 	return t
@@ -50,8 +52,14 @@ func (c *Plush) Exec(name string, binding pine.H) (data []byte, err error) {
 	c.l.RUnlock()
 	if !ok || c.debug {
 		c.l.Lock()
-		defer c.l.Unlock()
-		s, err := ioutil.ReadFile(filepath.Join(c.dir, name))
+		var s []byte
+		var err error
+		if c.fs != nil {
+			s, err = c.fs.ReadFile(filepath.Join(c.dir, name))
+		} else {
+			s, err = ioutil.ReadFile(filepath.Join(c.dir, name))
+		}
+		c.l.Unlock()
 		if err != nil {
 			return nil, err
 		}

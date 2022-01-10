@@ -11,27 +11,11 @@ import (
 	"github.com/xiusin/pine/di"
 	"github.com/xiusin/web-db-manager/actions/common"
 	"github.com/xiusin/web-db-manager/actions/render"
-	commonFn "github.com/xiusin/web-db-manager/common"
 )
 
 type MyWebSql struct {
 	pine.Controller
 	plush *render.Plush
-}
-
-func init() {
-	plushEngine := render.New(commonFn.GetRootPath("assets/modules/views"), true)
-	plushEngine.AddFunc("T", common.T)
-
-	plushEngine.AddFunc("getServerList", func() map[string]common.Server {
-		return common.SERVER_LIST
-	})
-
-	pine.RegisterViewEngine(plushEngine)
-
-	di.Set(common.RenderService, func(builder di.AbstractBuilder) (interface{}, error) {
-		return plushEngine, nil
-	}, true)
 }
 
 func (c *MyWebSql) Construct() {

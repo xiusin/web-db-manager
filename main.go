@@ -19,13 +19,29 @@ import (
 	cacheProvider "github.com/xiusin/pine/sessions/providers/cache"
 	"github.com/xiusin/reload"
 	"github.com/xiusin/web-db-manager/actions"
+	"github.com/xiusin/web-db-manager/actions/render"
 	"github.com/xiusin/web-db-manager/common"
+
+	. "github.com/xiusin/web-db-manager/actions/common"
 )
 
 //go:embed assets/*
 var assets embed.FS
 
 func main() {
+	plushEngine := render.New("assets/modules/views", &assets, true)
+	plushEngine.AddFunc("T", T)
+
+	plushEngine.AddFunc("getServerList", func() map[string]Server {
+		return SERVER_LIST
+	})
+
+	pine.RegisterViewEngine(plushEngine)
+
+	di.Set(RenderService, func(builder di.AbstractBuilder) (interface{}, error) {
+		return plushEngine, nil
+	}, true)
+
 	app := pine.New()
 
 	app.Use(func(ctx *pine.Context) {
@@ -55,6 +71,7 @@ func main() {
 	}, true)
 
 	app.SetRecoverHandler(func(ctx *pine.Context) {
+		ctx.Logger().Error(ctx.Msg, ctx.Err())
 		ctx.Abort(fasthttp.StatusInternalServerError, fasthttp.StatusMessage(fasthttp.StatusInternalServerError))
 	})
 
