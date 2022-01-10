@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -63,11 +64,12 @@ func main() {
 
 	app.ANY("/", func(ctx *pine.Context) { ctx.Redirect("/mywebsql/index") })
 	app.ANY("/mywebsql/cache", actions.Cache)
+
 	app.Handle(new(actions.IndexController), "/mywebsql")
 
 	transcoder := securecookie.New([]byte(common.Appcfg.HashKey), []byte(common.Appcfg.BlockKey))
 
-	reload.Loop(func() error {
+	exec := func() error {
 		app.Run(
 			pine.Addr(fmt.Sprintf(":%d", common.Appcfg.Port)),
 			pine.WithGracefulShutdown(),
@@ -78,8 +80,14 @@ func main() {
 			pine.WithCompressGzip(true),
 		)
 		return nil
-	}, &reload.Conf{
-		Cmd: &reload.CmdConf{},
-	})
+	}
+
+	if os.Getenv("RELOADABLE") != "" {
+		reload.Loop(func() error {
+			return exec()
+		}, &reload.Conf{Cmd: &reload.CmdConf{}})
+	} else {
+		exec()
+	}
 
 }
