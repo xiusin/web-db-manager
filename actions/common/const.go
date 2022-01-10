@@ -246,7 +246,7 @@ type Column struct {
 func (c *Column) Fill() {
 	c.NotNull = c.IsNullAble == "NO"
 	c.Numeric, _ = common.InArray(c.DataType, []string{"float", "double", "decimal", "tinyint", "int", "bigint", "mediumint", "numeric"})
-	c.Blob, _ = common.InArray(c.DataType, []string{"binary", "blob", "text", "longtext"})
+	c.Blob, _ = common.InArray(c.DataType, []string{"binary", "blob", "text", "longtext", "mediumtext"})
 	c.Autoinc = c.Extra == "auto_increment"
 	c.PKey = c.ColumnKey == "PRI"
 	c.UKey = c.ColumnKey == "UNI"

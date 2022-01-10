@@ -10,11 +10,13 @@ import (
 	"github.com/allegro/bigcache/v3"
 
 	"github.com/gorilla/securecookie"
+	"github.com/xiusin/logger"
 	"github.com/xiusin/pine"
 	pine_bigcache "github.com/xiusin/pine/cache/providers/bigcache"
 	"github.com/xiusin/pine/di"
 	"github.com/xiusin/pine/sessions"
 	cacheProvider "github.com/xiusin/pine/sessions/providers/cache"
+	"github.com/xiusin/reload"
 	"github.com/xiusin/web-db-manager/actions"
 	"github.com/xiusin/web-db-manager/common"
 )
@@ -37,6 +39,8 @@ func main() {
 
 	cacheHandler := pine_bigcache.New(bigcache.DefaultConfig(time.Hour))
 
+	di.Instance(di.ServicePineLogger, logger.New())
+
 	di.Set(common.ServiceICache, func(builder di.AbstractBuilder) (i interface{}, err error) {
 		return cacheHandler, nil
 	}, true)
@@ -55,18 +59,27 @@ func main() {
 
 	// 注册静态地址
 	app.StaticFS("/mywebsql/", assets, "assets")
-	app.StaticFile("favicon.ico", common.GetRootPath("assets/favicon.ico"))
+	app.Favicon(common.GetRootPath("assets/favicon.ico"))
 
 	app.ANY("/", func(ctx *pine.Context) { ctx.Redirect("/mywebsql/index") })
 	app.ANY("/mywebsql/cache", actions.Cache)
 	app.Handle(new(actions.IndexController), "/mywebsql")
 
-	app.Run(
-		pine.Addr(fmt.Sprintf(":%d", common.Appcfg.Port)),
-		pine.WithGracefulShutdown(),
-		pine.WithCookieTranscoder(securecookie.New([]byte(common.Appcfg.HashKey), []byte(common.Appcfg.BlockKey))),
-		pine.WithoutStartupLog(true),
-		pine.WithServerName("xiusin/pine"),
-		pine.WithCookie(true),
-	)
+	transcoder := securecookie.New([]byte(common.Appcfg.HashKey), []byte(common.Appcfg.BlockKey))
+
+	reload.Loop(func() error {
+		app.Run(
+			pine.Addr(fmt.Sprintf(":%d", common.Appcfg.Port)),
+			pine.WithGracefulShutdown(),
+			pine.WithCookieTranscoder(transcoder),
+			pine.WithoutStartupLog(false),
+			pine.WithServerName("xiusin/pine"),
+			pine.WithCookie(true),
+			pine.WithCompressGzip(true),
+		)
+		return nil
+	}, &reload.Conf{
+		Cmd: &reload.CmdConf{},
+	})
+
 }

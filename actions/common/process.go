@@ -363,33 +363,12 @@ func (p *Process) setDbVar(variable, value string) {
 }
 
 func (p *Process) sanitizeCreateCommand(cmd string) string {
-
-	// if ($type == "view"){
-	// 	$str = str_replace(" DEFINER=", "<br>DEFINER=", $str);
-	// 	$str = str_replace(" SQL SECURITY ", "<br>SQL SECURITY ", $str);
-	// 	$str = str_replace(" AS (", "<br> AS<br>(", $str);
-	// }
-	// else if ($type == "procedure")
-	// {
-	// 	$str = str_replace(" DEFINER=", "<br>DEFINER=", $str);
-	// 	$str = str_replace(" PROCEDURE ", "<br>PROCEDURE ", $str);
-	// 	$str = str_replace("BEGIN", "<br>BEGIN<br>", $str);
-	// 	$str = str_replace(" END", "<br>END", $str);
-
-	// }
-	// else
 	cmd = strReplace(
 		[]string{" DEFINER=", " FUNCTION ", "BEGIN", "END", " THEN ", "\\n"},
 		[]string{"<br>DEFINER=", "<br>FUNCTION ", "<br>BEGIN<br> ", "<br>END", " THEN<br>　", "<br>"},
 		cmd)
 
 	cmd = regexp.MustCompile(`;\s*(SET|DECLARE|IF|ELSEIF|END|RETURN)`).ReplaceAllString(cmd, "; <br>　$1")
-	// cmd = regexp.MustCompile(`^(SET|DECLARE|IF|ELSEIF|END|RETURN)`).ReplaceAllString(cmd, "　$1")
-	// else if ($type == "trigger")
-	// {
-	// 	$str = str_replace("\n", "<br>", $str);
-	// }
-
 	return regexp.MustCompile(`[\n|\r]?[\n]+`).ReplaceAllString(cmd, "<br>")
 }
 
@@ -846,14 +825,14 @@ func (p *Process) createResultGrid(query string) string {
 					if v, ok := rs.([]byte); ok && len(v) != 0 {
 						data = string(rs.([]byte))
 					} else if v, ok := rs.(time.Time); ok {
-						data = v.Format(common.TimeFormat) // TODO 根据时区返回时间
+						data = v.Format(common.TimeFormat)
 					} else {
-						// pine.Logger().Debug("字段"+column.ColumnName+"类型", reflect.ValueOf(rs).Type().String())
 						data = fmt.Sprintf("%s", rs)
 					}
 				}
+				data = template.HTMLEscapeString(data) // 处理带有标签的字段
 			} else {
-				data = p.getBlobDisplay(rs, column, j, ed)
+				data = p.getBlobDisplay(rs, column, j, ed) // 大字段单独输入框处理
 			}
 
 			grid += "<td nowrap=\"nowrap\" class=\"" + class + "\">" + data + "</td>"
