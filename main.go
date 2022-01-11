@@ -25,10 +25,13 @@ import (
 	. "github.com/xiusin/web-db-manager/actions/common"
 )
 
-//go:embed assets/*
+//go:embed assets/*/**
 var assets embed.FS
 
 func main() {
+
+	di.Instance(common.ServiceEmbedAssets, &assets)
+
 	plushEngine := render.New("assets/modules/views", &assets, true)
 	plushEngine.AddFunc("T", T)
 
@@ -58,9 +61,7 @@ func main() {
 
 	di.Instance(di.ServicePineLogger, logger.New())
 
-	di.Set(common.ServiceICache, func(builder di.AbstractBuilder) (i interface{}, err error) {
-		return cacheHandler, nil
-	}, true)
+	di.Instance(common.ServiceICache, cacheHandler)
 
 	di.Set(di.ServicePineSessions, func(builder di.AbstractBuilder) (i interface{}, err error) {
 		sess := sessions.New(cacheProvider.NewStore(cacheHandler), &sessions.Config{
@@ -77,9 +78,11 @@ func main() {
 
 	// 注册静态地址
 	app.StaticFS("/mywebsql/", assets, "assets")
+
 	app.Favicon(common.GetRootPath("assets/favicon.ico"))
 
 	app.ANY("/", func(ctx *pine.Context) { ctx.Redirect("/mywebsql/index") })
+
 	app.ANY("/mywebsql/cache", actions.Cache)
 
 	app.Handle(new(actions.IndexController), "/mywebsql")

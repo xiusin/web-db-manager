@@ -2,22 +2,24 @@ package actions
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 
 	"github.com/xiusin/pine"
+	"github.com/xiusin/pine/di"
 	"github.com/xiusin/web-db-manager/common"
 )
 
 func Cache(ctx *pine.Context) {
+	fs := di.MustGet(common.ServiceEmbedAssets).(*embed.FS)
 	themePath := ctx.Session().Get("theme_path")
 	var byts bytes.Buffer
 	script, _ := ctx.Input().GetString("script")
 	css, _ := ctx.Input().GetString("css")
 	if script != "" {
-		scriptPath := common.GetRootPath("assets/js")
+		scriptPath := "assets/js" // common.GetRootPath()
 		scripts := strings.Split(script, ",")
 		ctx.Response.Header.Set("mime-type", "text/javascript")
 		ctx.Response.Header.Set("content-type", "text/javascript")
@@ -27,7 +29,7 @@ func Cache(ctx *pine.Context) {
 				continue
 			}
 			fullPath := scriptPath + "/" + s + ".js"
-			if data, err := os.ReadFile(fullPath); err == nil {
+			if data, err := fs.ReadFile(fullPath); err == nil {
 				byts.Write(data)
 				byts.WriteByte('\n')
 				byts.WriteByte('\n')
@@ -45,16 +47,16 @@ func Cache(ctx *pine.Context) {
 			if !r.MatchString(s) {
 				continue
 			}
-			fullPath := common.GetRootPath("assets/themes/_base/" + s + ".css")
-			if data, err := os.ReadFile(fullPath); err == nil {
+			fullPath := "assets/themes/_base/" + s + ".css" //common.GetRootPath()
+			if data, err := fs.ReadFile(fullPath); err == nil {
 				byts.Write(data)
 				byts.WriteByte('\n')
 				byts.WriteByte('\n')
 			} else {
 				fmt.Println("无法找到文件", fullPath)
 			}
-			fullPath = common.GetRootPath("assets/themes/" + themePath + "/" + s + ".css")
-			if data, err := os.ReadFile(fullPath); err == nil {
+			fullPath = "assets/themes/" + themePath + "/" + s + ".css" // common.GetRootPath()
+			if data, err := fs.ReadFile(fullPath); err == nil {
 				byts.Write(data)
 				byts.WriteByte('\n')
 				byts.WriteByte('\n')

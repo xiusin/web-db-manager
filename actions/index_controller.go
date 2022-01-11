@@ -2,6 +2,7 @@ package actions
 
 import (
 	"html/template"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/xiusin/web-db-manager/actions/common"
@@ -144,40 +145,63 @@ func (c *IndexController) PostIndex() {
 	authUser, _ := c.Ctx().Input().GetString("auth_user")
 	authPwd, _ := c.Ctx().Input().GetString("auth_pwd")
 	server, _ := c.Ctx().Input().GetString("server")
-	if serve, ok := common.SERVER_LIST[server]; !ok {
-		c.hasError = "登录服务器失败"
-		c.GetIndex()
-	} else {
-		serve.User = authUser
-		serve.Password = authPwd
-		serve.ServerName = server
+	customUrl, _ := c.Ctx().Input().GetString("server_name")
 
-		if len(serve.User) == 0 {
-			c.hasError = "登录账号不能为空"
-			c.GetIndex()
-			return
+	serve, ok := common.SERVER_LIST[server]
+	if !ok && len(customUrl) > 0 {
+		customUrls := strings.Split(strings.TrimPrefix(strings.TrimPrefix(customUrl, "http://"), "https://"), ":")
+		if len(customUrls) == 1 || len(customUrls[1]) == 0 {
+			if len(customUrls) == 1 {
+				customUrls = append(customUrls, "3306")
+			} else {
+				customUrls[1] = "3306"
+			}
 		}
-		db, err := sqlx.Open(serve.Driver, serve.DSN(""))
-		if err != nil {
-			c.clearAuthSession()
-			c.hasError = err.Error()
-			c.Logger().Printf("连接数据库失败")
-			c.GetIndex()
-			return
+		serve = common.Server{
+			ServerName: "自定义",
+			Host:       customUrls[0],
+			Port:       customUrls[1],
+			Driver:     "mysql",
+			User:       authUser,
+			Password:   authPwd,
 		}
-
-		if err := db.Ping(); err != nil {
-			c.clearAuthSession()
-			c.hasError = err.Error()
-			c.Logger().Printf("db.Ping失败")
-			c.GetIndex()
-			return
-		}
-		defer db.Close()
-		c.saveAuthSession(serve)
-		common.InitProcess(db, c.Ctx(), &serve)
-		c.Logger().Printf("登录成功, 跳转页面")
-		c.Ctx().Redirect("/mywebsql/index", 302)
+		ok = true
 	}
 
+	if !ok {
+		c.hasError = "登录服务器失败"
+		c.GetIndex()
+		return
+	}
+
+	serve.User = authUser
+	serve.Password = authPwd
+	serve.ServerName = server
+
+	if len(serve.User) == 0 {
+		c.hasError = "登录账号不能为空"
+		c.GetIndex()
+		return
+	}
+	db, err := sqlx.Open(serve.Driver, serve.DSN(""))
+	if err != nil {
+		c.clearAuthSession()
+		c.hasError = err.Error()
+		c.Logger().Printf("连接数据库失败")
+		c.GetIndex()
+		return
+	}
+
+	if err := db.Ping(); err != nil {
+		c.clearAuthSession()
+		c.hasError = err.Error()
+		c.Logger().Printf("db.Ping失败")
+		c.GetIndex()
+		return
+	}
+	defer db.Close()
+	c.saveAuthSession(serve)
+	common.InitProcess(db, c.Ctx(), &serve)
+	c.Logger().Printf("登录成功, 跳转页面")
+	c.Ctx().Redirect("/mywebsql/index", 302)
 }

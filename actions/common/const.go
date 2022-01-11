@@ -46,8 +46,6 @@ const RenderService = "pinecms.mywebsql.plush"
 
 var SERVER_LIST = map[string]Server{
 	"Localhost MySQL": {Host: "localhost", Driver: "mysql", Port: "3306"},
-	// "Localhost PostgreSQL": {Host: "localhost", Driver: "pgsql"},
-	// "SQLite Databases":     {Host: "c:/sqlitedb/", Driver: "sqlite3", User: "root", Password: "sqlite"},
 }
 
 var LANGUAGES = map[string]string{

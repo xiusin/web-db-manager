@@ -17,6 +17,8 @@ var Appcfg *Config
 
 const ServiceICache = "cache.AbstractCache"
 
+const ServiceEmbedAssets = "*embed.FS"
+
 func init() {
 	Appcfg = &Config{
 		LogLevel:    logger.DebugLevel,

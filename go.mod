@@ -10,9 +10,9 @@ require (
 	github.com/gobuffalo/tags v2.1.7+incompatible // indirect
 	github.com/gorilla/securecookie v1.1.1
 	github.com/jmoiron/sqlx v1.3.4
-	github.com/valyala/fasthttp v1.31.0
+	github.com/valyala/fasthttp v1.32.0
 	github.com/xiusin/logger v0.0.10-0.20220103084022-9cb8378d9b03
-	github.com/xiusin/pine v0.0.0-20220110061324-991ac4bdf224
+	github.com/xiusin/pine v0.0.0-20220111015348-ad609a4f68e6
 	github.com/xiusin/reload v0.0.0-20211215091741-ab993ba2e9d2
 	xorm.io/xorm v1.2.5
 )
