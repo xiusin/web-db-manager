@@ -835,7 +835,7 @@ func (p *Process) createResultGrid(query string) string {
 				data = p.getBlobDisplay(rs, column, j, ed) // 大字段单独输入框处理
 			}
 
-			grid += "<td nowrap=\"nowrap\" class=\"" + class + "\">" + data + "</td>"
+			grid += "<td nowrap=\"nowrap\" striped=true width=80 class=\"" + class + "\">" + data + "</td>"
 		}
 		grid += "</tr>\n"
 	}
